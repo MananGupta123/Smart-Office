@@ -1,130 +1,96 @@
-# Smart Office - Offline POC
+# Smart Office
 
-This is a proof-of-concept for an offline-first, LAN-based document editing system.
+A quick POC for the offline document editor problem. Built with Node.js and vanilla JS.
 
-## Setup & Running
+## How to Run
 
-**Prerequisites:** Node.js installed.
+1. `npm install`
+2. `node server.js`
+3. Open `http://localhost:3001`
 
-1.  **Navigate to the server directory:**
-    ```bash
-    cd server
-    ```
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Start the server:**
-    ```bash
-    node server.js
-    ```
-4.  **Open the application:**
-    Open your browser and navigate to `http://localhost:3001`
+That's it. The server hosts both the API and the frontend.
 
-    *Note: The frontend is served statically by the Node server to simulate a single deployment unit.*
+---
 
-## Features Implemented (Option A)
-*   **Offline Server:** Node.js + Express serving static assets and API.
-*   **Storage:** File-system based JSON storage in `server/data/`.
-*   **Editor:** Custom HTML5 `contenteditable` implementation with toolbar.
-    *   Bold, Italic, Underline, Alignment.
-    *   **Templates:** "Insert Template" button adds a sender/receiver block.
-*   **Document Management:**
-    *   Create new documents.
-    *   Auto-save functionality (debounced).
-    *   List view sorted by most recent.
+## My Approach (Design Note)
 
-## Part 1: Design & Approach
+### System Design
 
-### 1. System Design
+The core idea is simple: one Node.js server acts as the "hub" on the LAN. Everyone's browser connects to it. No internet needed.
 
-**Goal:** An offline-first, LAN-based document creation system.
+I went with Express for the backend because it's fast to set up and I'm familiar with it. For storage, I'm just using JSON files on disk. It's not fancy, but for a v1 POC in an air-gapped environment, it's actually ideal – you can literally back up the whole database by copying a folder.
 
-#### Architecture
-I propose a **Client-Server Architecture** deployed on a local LAN.
+The frontend is vanilla JS. I considered React/Vite, but honestly, for a POC that needs to "just work" without a build step, plain HTML/CSS/JS felt like the right call. Less can go wrong.
 
-*   **Server (The Hub):** A Node.js server running on a designated machine in the office. It acts as the central source of truth for documents.
-    *   **Runtime:** Node.js (for lightweight, efficient concurrent handling).
-    *   **Database:** SQLite (file-based, zero-configuration, perfect for embedded/offline setups backup is just copying a file) or plain JSON files for simplicity in v1.
-    *   **Network:** Serves the app over HTTP on the local network (e.g., `http://192.168.1.100:3000`).
-*   **Client:** A React-based Single Page Application (SPA).
-    *   **Logic:** Runs entirely in the user's browser.
-    *   **Communication:** REST API for CRUD operations; WebSockets (Socket.io) for real-time status (e.g., "User B is editing this file") and streaming voice data.
+### Document Editing
 
-#### Communication Flow
-1.  **Load:** Browser requests `index.html` from Node server.
-2.  **Data:** React app fetches document list/content via `GET /api/documents`.
-3.  **Voice:** Audio is captured by the browser and streamed to the server via WebSockets for processing (since generic cloud APIs are blocked).
-4.  **Save:** Client auto-saves via `PUT /api/documents/:id` every few seconds or on manual trigger.
+I used the browser's native `contenteditable` for this POC. It's quick and dirty but does the job for demonstrating the flow.
 
-### 2. Document Editing
+If I were building this for real, I'd swap it out for TipTap (or ProseMirror directly). The big reason is data format – `contenteditable` gives you messy HTML, while TipTap stores everything as clean JSON. That matters a lot when you need to enforce templates or export to different formats.
 
-#### Editor Choice
-I would choose **TipTap** (based on ProseMirror).
-*   **Why?** It is headless and stores data as **JSON**, not raw HTML. This is critical for robust saving/loading and future-proofing (e.g., transforming to PDF/DOCX, applying templates programmatically). `contenteditable` is too fragile for a standardized "Smart Office".
-*   **Consistency:** TipTap ensures that "Bold" means the same JSON mark everywhere, ensuring highly standardized output.
+For now, I'm saving the HTML string inside a JSON wrapper. Not perfect, but it shows the save/load cycle works.
 
-#### Implementation
-*   **Saving:** The editor state (JSON) is serialized and sent to the server.
-*   **Loading:** The JSON is fetched and hydrated back into the editor.
-*   **Formatting:** Standard Toolbar features (Bold, Tables, etc.) modify the internal JSON model, which React renders to the DOM.
-*   **Structuring:** Specific "Blocks" (Sender Address, Receiver Block) would be custom Node types in ProseMirror/TipTap. This allows us to enforce constraints (e.g., "Subject" must always be H2).
+### Voice Input
 
-### 3. Voice Input (Speech-to-Text)
+The prompt mentioned voice dictation. Since we're offline, the usual Web Speech API is a no-go (it secretly calls Google's servers).
 
-Since we are **offline**, we cannot use the native Chrome Web Speech API reliably (as it often offloads to Google's cloud).
+My plan for a real implementation:
+1. Capture audio in the browser (MediaRecorder API works fine for this)
+2. Stream it to the server over WebSocket
+3. Run Vosk or Whisper.cpp on the server – both work completely offline
 
-#### Approach: Server-Side Processing
-1.  **Frontend:** capture audio using the `MediaRecorder API` or a library like `RecordRTC`.
-2.  **Streaming:** Stream binary audio chunks over **Socket.io** to the Node.js server.
-3.  **Backend AI:** Run a lightweight, offline STT model like **Vosk** or a quantized version of **OpenAI Whisper (cpp version)** on the server.
-    *   *Why Server?* Browser-based WASM models exist but are heavy to download on every session and can lag the UI. A central LAN server usually has more stable power/compute.
-4.  **Insertion:** The server sends back partial transcripts in real-time. The Frontend inserts text at the current cursor position.
+I didn't implement this in the POC because setting up Vosk properly takes a bit of time, but the architecture is straightforward.
 
-### 4. Templates & Standardization
+### Templates
 
-#### Storage
-Templates are just **readonly JSON documents**.
-*   Stored in a `templates/` directory or distinct database collection.
+I added a basic "Insert Template" button that drops in a sender/receiver block. It's a simple `insertHTML` call.
 
-#### Workflow
-1.  **Creation:** Admin creates a doc, creates placeholders (e.g., `{{SenderName}}`), and saves as "Template".
-2.  **Usage:** User selects "Deep Dive Template". Backend clones the JSON of the template into a *new* document ID and returns it.
-3.  **Enforcement:** We can use the Schema capabilities of ProseMirror to *lock* certain regions. For example, the "Header" area could be un-editable, ensuring the company logo and address format are never broken.
+For a production version, I'd store templates as separate JSON files and let users pick from a list. The interesting part would be locking certain sections so people can't accidentally delete the company header or mess up the format.
 
-### 5. Key Trade-offs
+### Trade-offs & What I'd Skip in v1
 
-#### What Not to Build in v1
-*   **Real-time Collaborative Editing (Google Docs style):** Implementing Operational Transformation (OT) or CRDTs is overkill for v1. We will use a **"Locking"** mechanism (Check-in/Check-out) to prevent overwrites.
-*   **Native Word Export:** We will rely on HTML-to-PDF or simple text export. Generating perfect `.docx` is complex.
+**Not building:**
+- Real-time collab (Google Docs style). Way too complex for v1. A simple "lock file when editing" approach is enough.
+- Perfect .docx export. I added a quick Word export using the HTML-to-doc trick, but it's not going to match MS Word output exactly.
 
-#### Technical Shortcuts to Avoid
-*   **Saving HTML directly:** Relying on `innerHTML` leads to messy, broken markup. We must store structured JSON.
-*   **Browser-based AI:** Avoid relying on client hardware for voice recognition; it's too variable.
+**Avoiding:**
+- Storing raw HTML without structure. It gets messy fast.
+- Client-side AI for voice. Too unreliable across different machines.
 
-#### Future Complexity
-*   **Conflict Resolution:** If we move away from locking, handling merge conflicts will be the hardest part.
-*   **Large Documents:** Loading massive JSON blobs can be slow; we'd eventually need lazy loading or virtualization.
+**Future headaches:**
+- Merge conflicts if we ever allow simultaneous editing
+- Performance on large documents
 
-## Part 2: Answers to Bonus Questions
+---
 
-### 1. How would you scale this to multiple users?
-**Concurrency:** The current file-system storage is okay for <10 users. For 50+ users, I would replace `fs.writeFile` with SQLite. SQLite is still serverless (file-based) but handles concurrent reads/writes much better than raw JSON files.
-**Network:** Deploy the Node app on a central PC with a static IP (e.g., `192.168.1.50`). Other users on the LAN access it via that IP.
+## Bonus Questions
 
-### 2. How would you add approvals and document locking?
-**Locking:**
-*   Add a `lockedBy: userId` field to the document JSON.
-*   When a user opens a doc, API sends `POST /lock/:id`.
-*   If locked, other users get "Read Only" mode.
-*   Lock expires after 5 mins of inactivity (heartbeat).
-**Approvals:**
-*   Add `status: 'draft' | 'pending' | 'approved'` to the JSON.
-*   "Submit" button changes status to `pending`.
-*   Admin users see a "Review" queue.
+### Scaling to multiple users?
 
-### 3. How would you add AI later without breaking determinism?
-**Determinism:** AI models can be non-deterministic. To fix this for legal docs:
-*   **Human in the Loop:** AI *suggests* text (acting as a super-powered clipboard), but the human must "Accept" it. The *accepted* text is saved, not the prompt.
-*   **Version Control:** Save the AI propmt + output version in the document metadata, so we can trace *why* it generated that text.
-*   **Local Models:** Run quantized Llama/Whisper models on the server. They are slower but ensure data never leaves the room (crucial for this product).
+The JSON file approach works fine for maybe 10 users. Beyond that, I'd switch to SQLite – still file-based and zero-config, but handles concurrent writes properly.
+
+For network setup, just run the server on a machine with a static IP and have everyone bookmark that address.
+
+### Approvals and locking?
+
+For locking: add a `lockedBy` field to each document. When someone opens it, they "claim" it. If someone else tries to open, they get read-only mode. Add a heartbeat so abandoned locks expire after 5 minutes.
+
+For approvals: add a `status` field (draft/pending/approved). "Submit for Review" button flips it to pending. Admins see a queue of pending docs.
+
+### Adding AI without breaking determinism?
+
+The key is keeping humans in control. AI suggests text, user explicitly accepts it. What gets saved is the accepted text, not the AI output directly.
+
+Also: log everything. Store the prompt, the model version, the output. That way if something weird shows up in a document months later, you can trace back exactly what happened.
+
+And obviously, for a product like this, the AI has to run locally. No cloud APIs.
+
+---
+
+## What I'd Improve Next
+
+- Swap contenteditable for TipTap
+- Add actual template management (create/edit/delete templates)
+- Implement the voice input with Vosk
+- Better error handling and offline indicators
+- Delete document functionality
