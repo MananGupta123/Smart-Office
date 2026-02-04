@@ -12,17 +12,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR);
 }
 
-// Helpers
 const getFilePath = (id) => path.join(DATA_DIR, `${id}.json`);
 
-// Routes
-
-// GET /api/documents - List all documents
 app.get('/api/documents', (req, res) => {
     fs.readdir(DATA_DIR, (err, files) => {
         if (err) return res.status(500).json({ error: 'Failed to read directory' });
@@ -31,7 +26,6 @@ app.get('/api/documents', (req, res) => {
             .filter(file => file.endsWith('.json'))
             .map(file => {
                 const id = file.replace('.json', '');
-                // Try to peek at content for title, else use ID
                 try {
                     const content = JSON.parse(fs.readFileSync(getFilePath(id), 'utf8'));
                     return { id, title: content.title || 'Untitled Document', updatedAt: content.updatedAt };
@@ -44,7 +38,6 @@ app.get('/api/documents', (req, res) => {
     });
 });
 
-// GET /api/documents/:id - Get specific document
 app.get('/api/documents/:id', (req, res) => {
     const { id } = req.params;
     const filePath = getFilePath(id);
@@ -59,13 +52,12 @@ app.get('/api/documents/:id', (req, res) => {
     });
 });
 
-// POST /api/documents - Create new document
 app.post('/api/documents', (req, res) => {
     const id = Date.now().toString();
     const newDoc = {
         id,
         title: 'Untitled Document',
-        content: {}, // TipTap JSON content
+        content: {},
         updatedAt: new Date().toISOString()
     };
 
@@ -75,7 +67,6 @@ app.post('/api/documents', (req, res) => {
     });
 });
 
-// PUT /api/documents/:id - Update document
 app.put('/api/documents/:id', (req, res) => {
     const { id } = req.params;
     const { title, content } = req.body;

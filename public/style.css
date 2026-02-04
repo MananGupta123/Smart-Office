@@ -30,7 +30,6 @@ body {
     height: 100%;
 }
 
-/* Sidebar */
 .sidebar {
     width: 260px;
     background: var(--bg-sidebar);
@@ -107,7 +106,6 @@ body {
     font-weight: 500;
 }
 
-/* Main Editor Area */
 .editor-area {
     flex: 1;
     display: flex;
@@ -207,8 +205,8 @@ body {
 .editor-content {
     background: white;
     width: 100%;
-    max-width: 816px; /* A4 width ish */
-    min-height: 1056px; /* A4 height */
+    max-width: 816px; 
+    min-height: 1056px; 
     padding: 4rem;
     box-shadow: var(--shadow-md);
     outline: none;
@@ -222,7 +220,6 @@ body {
     color: #9ca3af;
 }
 
-/* Template styles */
 .template-block {
     background: #f8fafc;
     border: 1px dashed #cbd5e1;
@@ -231,7 +228,6 @@ body {
     border-radius: 0.5rem;
 }
 
-/* Print Styles */
 @media print {
     body {
         height: auto;
@@ -264,6 +260,6 @@ body {
     }
 
     .template-block {
-        border: 1px solid #ddd; /* Solid border for print */
+        border: 1px solid #ddd;
     }
 }

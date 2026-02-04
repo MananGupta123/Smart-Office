@@ -2,7 +2,6 @@ const API_URL = '/api/documents';
 let currentDocId = null;
 let saveTimeout = null;
 
-// DOM Elements
 const docListEl = document.getElementById('docList');
 const editorEl = document.getElementById('editor');
 const titleInput = document.getElementById('docTitle');
@@ -10,18 +9,15 @@ const saveStatusEl = document.getElementById('saveStatus');
 const saveBtn = document.getElementById('saveBtn');
 const newDocBtn = document.getElementById('newDocBtn');
 
-// Initialize
 async function init() {
     await loadDocumentList();
     
-    // Listeners
     editorEl.addEventListener('input', scheduleAutoSave);
     titleInput.addEventListener('input', scheduleAutoSave);
     saveBtn.addEventListener('click', () => saveDocument(true));
     newDocBtn.addEventListener('click', createNewDocument);
 }
 
-// Formatting
 window.format = (command) => {
     document.execCommand(command, false, null);
     editorEl.focus();
@@ -32,7 +28,6 @@ window.execCmd = (command, value = null) => {
     editorEl.focus();
 };
 
-// Insert Template
 window.insertTemplate = () => {
     const templateHtml = `
         <div class="template-block">
@@ -47,7 +42,6 @@ window.insertTemplate = () => {
     document.execCommand('insertHTML', false, templateHtml);
 };
 
-// API Interactions
 async function loadDocumentList() {
     docListEl.innerHTML = '<div class="loading">Loading...</div>';
     try {
@@ -62,7 +56,7 @@ async function loadDocumentList() {
 
 function renderDocList(docs) {
     docListEl.innerHTML = '';
-    docs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)); // Newest first
+    docs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
     docs.forEach(doc => {
         const div = document.createElement('div');
@@ -94,21 +88,14 @@ async function loadDocument(id) {
     currentDocId = id;
     saveStatusEl.textContent = 'Loading...';
     
-    // Update active class in list
     document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
-    // Ideally find the one with this ID, but sticking to simple re-render for now
-    loadDocumentList(); // Refresh list to set active
+    loadDocumentList();
 
     try {
         const res = await fetch(`${API_URL}/${id}`);
         const doc = await res.json();
         
         titleInput.value = doc.title;
-        // If content is an object (from server default), it might be empty
-        // For our simple HTML-based storage, we'll store HTML string in formatting?
-        // Wait, server.js was set up for TipTap content object.
-        // We will adapt server to just store whatever we send.
-        // Our 'content' will be HTML string here.
         editorEl.innerHTML = doc.content.html || doc.content || '<p>Start typing...</p>'; 
         saveStatusEl.textContent = 'Loaded';
     } catch (e) {
@@ -119,7 +106,7 @@ async function loadDocument(id) {
 function scheduleAutoSave() {
     saveStatusEl.textContent = 'Unsaved changes...';
     if (saveTimeout) clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(saveDocument, 2000); // 2s debounce
+    saveTimeout = setTimeout(saveDocument, 2000);
 }
 
 async function saveDocument(force = false) {
@@ -129,7 +116,7 @@ async function saveDocument(force = false) {
     
     const data = {
         title: titleInput.value,
-        content: { html: editorEl.innerHTML } // Store as object with html key to be future proof ish
+        content: { html: editorEl.innerHTML }
     };
 
     try {
@@ -140,14 +127,11 @@ async function saveDocument(force = false) {
         });
         saveStatusEl.textContent = 'All changes saved';
         
-        // Refresh list if title changed
-        // loadDocumentList(); // can be expensive, maybe just update text
     } catch (e) {
         saveStatusEl.textContent = 'Error saving!';
     }
 }
 
-// Export
 window.exportToPDF = () => {
     window.print();
 };
@@ -170,5 +154,4 @@ window.exportToWord = () => {
     document.body.removeChild(fileDownload);
 };
 
-// Start
 init();
