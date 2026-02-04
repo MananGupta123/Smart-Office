@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Office - Offline Doc Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span>Smart Office</span>
+            </div>
+            
+            <button id="newDocBtn" class="btn-primary">
+                <span>+ New Document</span>
+            </button>
+
+            <div class="doc-list-header">YOUR DOCUMENTS</div>
+            <div id="docList" class="doc-list">
+                <!-- Documents will be loaded here -->
+                <div class="loading">Loading...</div>
+            </div>
+        </aside>
+
+        <main class="editor-area">
+            <header class="toolbar">
+                <div class="doc-meta">
+                    <input type="text" id="docTitle" placeholder="Untitled Document" class="doc-title-input">
+                    <span id="saveStatus" class="save-status">All changes saved</span>
+                </div>
+                <div class="actions">
+                    <button class="icon-btn" onclick="format('bold')" title="Bold"><b>B</b></button>
+                    <button class="icon-btn" onclick="format('italic')" title="Italic"><i>I</i></button>
+                    <button class="icon-btn" onclick="format('underline')" title="Underline"><u>U</u></button>
+                    <div class="separator"></div>
+                    <button class="icon-btn" onclick="format('justifyLeft')" title="Align Left">L</button>
+                    <button class="icon-btn" onclick="format('justifyCenter')" title="Align Center">C</button>
+                    <button class="icon-btn" onclick="format('justifyRight')" title="Align Right">R</button>
+                    <div class="separator"></div>
+                    <button class="icon-btn" onclick="execCmd('insertUnorderedList')" title="Bullet List">•</button>
+                    <button class="icon-btn" onclick="insertTemplate()" title="Insert Address Template">Insert Template</button>
+                    <div class="separator"></div>
+                    <button class="icon-btn" onclick="exportToPDF()" title="Export PDF">PDF</button>
+                    <button class="icon-btn" onclick="exportToWord()" title="Export Word">DOC</button>
+                    <button class="btn-secondary" id="saveBtn">Save Now</button>
+                </div>
+            </header>
+
+            <div class="editor-wrapper">
+                <div id="editor" class="editor-content" contenteditable="true" spellcheck="false">
+                    <p>Start typing your document...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
